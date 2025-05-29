@@ -11,7 +11,6 @@ public class Main {
     private static final String ATTRIBUTES_PATH = "Attributes.csv";
     private static final String SENSITIVITY_RESULTS_PATH = "Sensitivity_Results.xlsx";
     private static final String KYU_SCORE_PATH = "KYU Score.xlsx";
-    private static final String USER_ID_TO_QUERY = "2";
 
     public static void createTableFromSimpleDataFrame(Connection conn, SimpleDataFrame sdf, String tableName) throws SQLException {
         if (sdf == null || sdf.getColumnCount() == 0) {
@@ -87,12 +86,13 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("Starting Anonymization Process...");
-        if (args.length != 2) {
-    System.err.println("Usage: java Main <column_id> <filter_value>");
+        if (args.length != 3) {
+    System.err.println("Usage: java Main <column_id> <filter_value> <query_user_id>");
     return;
 }
 String userIdColumn = args[0];
 String userValue = args[1];
+String queryUserId = args[2];
 
         try {
             SimpleDataFrame dataDf = DataLoader.loadDataDf(DATA_DF_PATH, ';');
@@ -120,7 +120,7 @@ System.out.println("Query resultSDF rows: " + resultSDF.getRowCount());
                 System.out.println("Result Type ------ " + resultType);
 
                 String kyuScoreString = kyuScoresList.stream()
-                        .filter(ks -> USER_ID_TO_QUERY.equals(ks.getUserId()))
+                        .filter(ks -> queryUserId.equals(ks.getUserId()))
                         .map(ks -> ks.getKyuScore().toLowerCase())
                         .findFirst().orElse("low");
                 System.out.println("KYU Score ------ " + kyuScoreString);
