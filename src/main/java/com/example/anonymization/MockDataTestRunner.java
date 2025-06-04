@@ -8,18 +8,27 @@ import java.util.*;
 
 public class MockDataTestRunner {
 
-    private static final String DATA_DF_PATH = "Data_2019-20.csv";
-    private static final String SENSITIVITY_RESULTS_PATH = "Sensitivity_Results.xlsx";
-    private static final String KYU_SCORE_PATH = "KYU Score.xlsx";
-    private static final String USER_ID_TO_QUERY = "2";
+    // private static final String DATA_DF_PATH = "Data_2019-20.csv";
+    // private static final String SENSITIVITY_RESULTS_PATH = "Sensitivity_Results.xlsx";
+    // private static final String KYU_SCORE_PATH = "KYU Score.xlsx";
+    private static final String USER_ID_TO_QUERY = "2"; // This remains hardcoded as per current task scope
 
     public static void main(String[] args) {
         System.out.println("Starting Mock Data Anonymization Process (using real data files)...");
 
+        if (args.length != 3) {
+            System.err.println("Usage: java com.example.anonymization.MockDataTestRunner <data_df_path> <sensitivity_results_path> <kyu_score_path>");
+            return;
+        }
+
+        String dataDfPath = args[0];
+        String sensitivityResultsPath = args[1];
+        String kyuScorePath = args[2];
+
         try {
-            SimpleDataFrame dataDf = DataLoader.loadDataDf(DATA_DF_PATH, ';');
-            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(SENSITIVITY_RESULTS_PATH, null);
-            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(KYU_SCORE_PATH, null);
+            SimpleDataFrame dataDf = DataLoader.loadDataDf(dataDfPath, ';');
+            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(sensitivityResultsPath, null);
+            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(kyuScorePath, null);
 
             System.out.println("Data initialized. dataDf rows: " + dataDf.getRowCount());
 

@@ -7,11 +7,12 @@ import java.util.stream.Collectors;
 
 public class Main {
 
-    private static final String DATA_DF_PATH = "Data_2019-20.csv";
-    private static final String ATTRIBUTES_PATH = "Attributes.csv";
-    private static final String SENSITIVITY_RESULTS_PATH = "Sensitivity_Results.xlsx";
-    private static final String KYU_SCORE_PATH = "KYU Score.xlsx";
-    private static final String USER_ID_TO_QUERY = "2";
+    // File paths will now be passed as command-line arguments
+    // private static final String DATA_DF_PATH = "Data_2019-20.csv";
+    // private static final String ATTRIBUTES_PATH = "Attributes.csv";
+    // private static final String SENSITIVITY_RESULTS_PATH = "Sensitivity_Results.xlsx";
+    // private static final String KYU_SCORE_PATH = "KYU Score.xlsx";
+    // private static final String USER_ID_TO_QUERY = "2"; // This will be replaced by filter_value argument
 
     public static void createTableFromSimpleDataFrame(Connection conn, SimpleDataFrame sdf, String tableName) throws SQLException {
         if (sdf == null || sdf.getColumnCount() == 0) {
@@ -87,17 +88,22 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("Starting Anonymization Process...");
-        if (args.length != 2) {
-    System.err.println("Usage: java Main <column_id> <filter_value>");
+        if (args.length != 6) {
+    System.err.println("Usage: java com.example.anonymization.Main <data_df_path> <attributes_path> <sensitivity_results_path> <kyu_score_path> <column_id> <filter_value>");
     return;
 }
-String userIdColumn = args[0];
-String userValue = args[1];
+
+        String dataDfPath = args[0];
+        String attributesPath = args[1]; // Not used in current Main logic directly, but good to have
+        String sensitivityResultsPath = args[2];
+        String kyuScorePath = args[3];
+        String userIdColumn = args[4];
+        String userValue = args[5];
 
         try {
-            SimpleDataFrame dataDf = DataLoader.loadDataDf(DATA_DF_PATH, ';');
-            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(SENSITIVITY_RESULTS_PATH, null);
-            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(KYU_SCORE_PATH, null);
+            SimpleDataFrame dataDf = DataLoader.loadDataDf(dataDfPath, ';');
+            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(sensitivityResultsPath, null);
+            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(kyuScorePath, null);
 
             System.out.println("Data initialized. dataDf rows: " + dataDf.getRowCount());
 
@@ -120,7 +126,7 @@ System.out.println("Query resultSDF rows: " + resultSDF.getRowCount());
                 System.out.println("Result Type ------ " + resultType);
 
                 String kyuScoreString = kyuScoresList.stream()
-                        .filter(ks -> USER_ID_TO_QUERY.equals(ks.getUserId()))
+                        .filter(ks -> userValue.equals(ks.getUserId())) // Using userValue (filter_value) to filter KYU scores
                         .map(ks -> ks.getKyuScore().toLowerCase())
                         .findFirst().orElse("low");
                 System.out.println("KYU Score ------ " + kyuScoreString);
