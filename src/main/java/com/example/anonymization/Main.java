@@ -122,14 +122,13 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("Starting Anonymization Process...");
-        if (args.length != 3) {
-    System.err.println("Usage: java com.example.anonymization.Main <user_id> <column_id> <filter_value>");
+        if (args.length != 2) { // Expect 2 arguments now
+    System.err.println("Usage: java com.example.anonymization.Main <user_id> \"<sqlite_query>\"");
     return;
 }
 
         String userId = args[0];
-        String columnId = args[1];
-        String filterValue = args[2];
+        String sqliteQuery = args[1]; // Second argument is now the full SQLite query
 
         System.out.println("--- Configuration ---");
         System.out.println("Data DF path (from config): " + LOADED_DATA_DF_PATH);
@@ -137,8 +136,7 @@ public class Main {
         System.out.println("Sensitivity Results path (from config): " + LOADED_SENSITIVITY_RESULTS_PATH);
         System.out.println("KYU Score Path (from config): " + LOADED_KYU_SCORE_PATH);
         System.out.println("User ID (from runtime arg): " + userId);
-        System.out.println("Column ID (from runtime arg): " + columnId);
-        System.out.println("Filter Value (from runtime arg): " + filterValue);
+        System.out.println("SQLite Query (from runtime arg): " + sqliteQuery);
         System.out.println("--- End Configuration ---");
 
         try {
@@ -152,9 +150,9 @@ public class Main {
                 System.out.println("In-memory SQLite DB connected.");
                 createTableFromSimpleDataFrame(conn, dataDf, "data_df");
                 System.out.println("'data_df' table created and populated in SQLite.");
-                String query = String.format("SELECT * FROM data_df WHERE \"%s\" = '%s'", columnId, filterValue);
-                System.out.println("Executing query: " + query);
-                SimpleDataFrame resultSDF = executeSqlQueryToSimpleDataFrame(conn, query);
+                // String query = String.format("SELECT * FROM data_df WHERE \"%s\" = '%s'", columnId, filterValue); // Removed
+                System.out.println("Executing query (from arg): " + sqliteQuery);
+                SimpleDataFrame resultSDF = executeSqlQueryToSimpleDataFrame(conn, sqliteQuery);
 
 System.out.println("Query resultSDF rows: " + resultSDF.getRowCount());
 

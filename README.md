@@ -30,33 +30,32 @@ If these properties are not provided during the build, they will default to `"pa
 
 This command will compile the code, run tests (if any), and package the application into two JAR files located in the `target/` directory:
 - `target/data-processor-main.jar` (with all four data file paths embedded)
-- `target/data-processor-mock-runner.jar`
+- `target/data-processor-mock-runner.jar` (if its execution is enabled in `pom.xml`)
 
 ### Running `data-processor-main.jar`
 
 This JAR is the main application for data processing and anonymization.
 - Paths for all necessary data files (main data, attributes, sensitivity results, and KYU scores) are embedded at build time.
-- It requires three command-line arguments at runtime: the user ID (for KYU score lookup), the column ID to query from the main data file, and the filter value for that column.
+- It requires two command-line arguments at runtime: the user ID (for KYU score lookup) and the full SQLite query string to be executed against the loaded data.
 
 **Usage:**
 ```bash
-java -jar target/data-processor-main.jar <user_id> <column_id> <filter_value>
+java -jar target/data-processor-main.jar <user_id> "<sqlite_query>"
 ```
 
 **Arguments:**
 - `<user_id>`: The ID of the user. This ID is used to look up their KYU score from the KYU score file (whose path was embedded at build time).
-- `<column_id>`: The ID/name of the column to be queried from the main data file.
-- `<filter_value>`: The value to filter by in the specified `<column_id>`.
+- `<sqlite_query>`: The full SQLite query string to execute on the data loaded from the CSV file specified by `data.df.path` at build time. **Important**: Enclose the query in double quotes if it contains spaces or special shell characters. The table name within the query should typically be `data_df` (as created by the application).
 
 **Example:**
 ```bash
-java -jar target/data-processor-main.jar "2" "user_id_column_in_data_df" "some_filter_value_for_data_df"
+java -jar target/data-processor-main.jar "2" "SELECT * FROM data_df WHERE "2" = 'Gadag'"
 ```
-Ensure you replace `"2"`, `"user_id_column_in_data_df"`, and `"some_filter_value_for_data_df"` with your desired user ID, column ID, and filter value.
+Ensure you replace `"2"` with your desired user ID. The example query selects all columns for the row where column named "2" has the value 'Gadag'. Adjust the query as needed for your specific data and table structure (the table created from the CSV is named `data_df`).
 
 ### Running `data-processor-mock-runner.jar`
 
-This JAR runs a predefined mock data test scenario using the provided data files. It requires all three primary data file paths as command-line arguments.
+This JAR runs a predefined mock data test scenario using the provided data files. It requires all three primary data file paths as command-line arguments. (Note: The build configuration for this JAR might be commented out in the current `pom.xml` to focus on `data-processor-main.jar`. If needed, ensure its `<execution>` block in `maven-shade-plugin` or `maven-assembly-plugin` is active).
 
 **Usage:**
 ```bash
@@ -92,6 +91,6 @@ If the JAR is available locally, you might consider installing it to your local 
 ```
 **Note:** Using system scope has limitations and is generally not recommended for multi-module projects or wider distribution. Installing the JAR to a local or remote Maven repository is a more robust approach.
 
-When used as a library, you could invoke the `main` method of `com.example.anonymization.Main` class, providing the three runtime arguments (`user_id`, `column_id`, `filter_value`) programmatically. Alternatively, you might refactor the core logic into separate, more easily callable public methods if direct `main` invocation is not suitable.
+When used as a library, you could invoke the `main` method of `com.example.anonymization.Main` class, providing the two runtime arguments (`user_id`, `sqlite_query`) programmatically. Alternatively, you might refactor the core logic into separate, more easily callable public methods if direct `main` invocation is not suitable.
 The paths for all data files (including KYU scores) would be used as configured during its build.
 ```
