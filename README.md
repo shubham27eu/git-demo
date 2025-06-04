@@ -10,7 +10,7 @@ This project provides tools for data anonymization and processing. It generates 
 
 To build the executable JAR files, navigate to the project's root directory (where `pom.xml` is located).
 
-The build process for `data-processor-main.jar` embeds paths for the main data CSV, attributes CSV, and sensitivity results Excel file directly into the JAR from Maven properties provided at build time. The KYU score Excel file path is provided at runtime for this JAR.
+The build process for `data-processor-main.jar` embeds paths for the main data CSV, attributes CSV, and sensitivity results Excel file directly into the JAR from Maven properties provided at build time. The KYU score *value* (e.g., "low", "medium", "high") is provided at runtime for this JAR.
 
 Run the following Maven command, replacing placeholder paths with actual paths to your files:
 ```bash
@@ -34,23 +34,23 @@ This command will compile the code, run tests (if any), and package the applicat
 
 This JAR is the main application for data processing and anonymization.
 - Paths for the main data, attributes, and sensitivity results are embedded at build time.
-- It requires three command-line arguments at runtime: the path to the KYU score Excel file, the column ID to query, and the filter value for that column.
+- It requires three command-line arguments at runtime: the KYU score value (a string), the column ID to query, and the filter value for that column.
 
 **Usage:**
 ```bash
-java -jar target/data-processor-main.jar <kyu_score_path> <column_id> <filter_value>
+java -jar target/data-processor-main.jar <kyu_score_value> <column_id> <filter_value>
 ```
 
 **Arguments:**
-- `<kyu_score_path>`: Path to the KYU score Excel file (e.g., `path/to/your/KYU_Score.xlsx`).
+- `<kyu_score_value>`: The KYU score as a string (e.g., "low", "medium", "high"). This value is used directly by the anonymization logic.
 - `<column_id>`: The ID/name of the column to be queried from the main data file.
-- `<filter_value>`: The value to filter by in the specified `<column_id>`. Also used to find the matching KYU score for the user.
+- `<filter_value>`: The value to filter by in the specified `<column_id>`.
 
 **Example:**
 ```bash
-java -jar target/data-processor-main.jar path/to/your/KYU_Score.xlsx "2" "SomeValue"
+java -jar target/data-processor-main.jar "low" "2" "SomeValue"
 ```
-Ensure you replace the placeholder path and values with your actual KYU score file path and desired query parameters.
+Ensure you replace `"low"`, `"2"`, and `"SomeValue"` with your desired KYU score, column ID, and filter value.
 
 ### Running `data-processor-mock-runner.jar`
 
@@ -91,5 +91,5 @@ If the JAR is available locally, you might consider installing it to your local 
 **Note:** Using system scope has limitations and is generally not recommended for multi-module projects or wider distribution. Installing the JAR to a local or remote Maven repository is a more robust approach.
 
 When used as a library, you could invoke the `main` method of `com.example.anonymization.Main` class, providing the three runtime arguments programmatically. Alternatively, you might refactor the core logic into separate, more easily callable public methods if direct `main` invocation is not suitable.
-The embedded paths for data, attributes, and sensitivity results would be used as configured during its build. The KYU score path would still need to be provided if using the `main` method directly.
+The embedded paths for data, attributes, and sensitivity results would be used as configured during its build. The KYU score *value* would still need to be provided if using the `main` method directly.
 ```

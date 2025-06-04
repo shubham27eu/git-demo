@@ -118,27 +118,27 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Starting Anonymization Process...");
         if (args.length != 3) {
-    System.err.println("Usage: java com.example.anonymization.Main <kyu_score_path> <column_id> <filter_value>");
+    System.err.println("Usage: java com.example.anonymization.Main <kyu_score_value> <column_id> <filter_value>"); // Updated usage message
     return;
 }
 
         // Paths for data_df and sensitivity_results are now loaded from config.properties
         // attributesPath is also loaded from config.properties (LOADED_ATTRIBUTES_PATH) but not directly used in this method's current logic.
-        String kyuScorePath = args[0];
+        String kyuScoreValue = args[0]; // Renamed from kyuScorePath, now holds the value e.g. "low"
         String userIdColumn = args[1];
-        String userValue = args[2];
+        String userValue = args[2]; // This is the filter_value, also used previously for kyu score lookup if applicable
 
-        System.out.println("--- Path Configuration ---");
+        System.out.println("--- Configuration ---");
         System.out.println("Data DF path (from config): " + LOADED_DATA_DF_PATH);
         System.out.println("Attributes path (from config): " + LOADED_ATTRIBUTES_PATH);
         System.out.println("Sensitivity Results path (from config): " + LOADED_SENSITIVITY_RESULTS_PATH);
-        System.out.println("KYU Score path (from runtime arg): " + kyuScorePath);
-        System.out.println("--- End Path Configuration ---");
+        System.out.println("KYU Score Value (from runtime arg): " + kyuScoreValue);
+        System.out.println("--- End Configuration ---");
 
         try {
             SimpleDataFrame dataDf = DataLoader.loadDataDf(LOADED_DATA_DF_PATH, ';');
             List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(LOADED_SENSITIVITY_RESULTS_PATH, null);
-            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(kyuScorePath, null); // kyu_score_path is a runtime argument
+            // List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(kyuScorePath, null); // Removed: KYU scores no longer loaded from file
 
             System.out.println("Data initialized. dataDf rows: " + dataDf.getRowCount());
 
@@ -160,10 +160,10 @@ System.out.println("Query resultSDF rows: " + resultSDF.getRowCount());
                 String resultType = DataProcessor.determineQueryResultType(resultSDF);
                 System.out.println("Result Type ------ " + resultType);
 
-                String kyuScoreString = kyuScoresList.stream()
-                        .filter(ks -> userValue.equals(ks.getUserId())) // Using userValue (filter_value) to filter KYU scores
-                        .map(ks -> ks.getKyuScore().toLowerCase())
-                        .findFirst().orElse("low");
+                // KYU score is now directly from command line argument
+                String kyuScoreString = kyuScoreValue.toLowerCase();
+                // Validate kyuScoreString if necessary (e.g., ensure it's "low", "medium", or "high")
+                // For now, we assume it's provided correctly.
                 System.out.println("KYU Score ------ " + kyuScoreString);
 
                 String sensitivityLevelString;
