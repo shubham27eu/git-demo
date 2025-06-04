@@ -1,18 +1,47 @@
 package com.example.anonymization;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 public class Main {
 
-    // File paths will now be passed as command-line arguments
-    // private static final String DATA_DF_PATH = "Data_2019-20.csv";
-    // private static final String ATTRIBUTES_PATH = "Attributes.csv";
-    // private static final String SENSITIVITY_RESULTS_PATH = "Sensitivity_Results.xlsx";
-    // private static final String KYU_SCORE_PATH = "KYU Score.xlsx";
-    // private static final String USER_ID_TO_QUERY = "2"; // This will be replaced by filter_value argument
+    private static final String LOADED_DATA_DF_PATH;
+    private static final String LOADED_ATTRIBUTES_PATH;
+    private static final String LOADED_SENSITIVITY_RESULTS_PATH;
+
+    static {
+        Properties props = new Properties();
+        try (InputStream input = Main.class.getResourceAsStream("/config.properties")) {
+            if (input == null) {
+                System.err.println("Sorry, unable to find config.properties. Make sure it's in src/main/resources and included in the JAR.");
+                throw new RuntimeException("config.properties not found");
+            }
+            props.load(input);
+
+            LOADED_DATA_DF_PATH = props.getProperty("data.df.path");
+            LOADED_ATTRIBUTES_PATH = props.getProperty("attributes.path");
+            LOADED_SENSITIVITY_RESULTS_PATH = props.getProperty("sensitivity.results.path");
+
+            if (LOADED_DATA_DF_PATH == null || LOADED_DATA_DF_PATH.equals("path-not-set") || LOADED_DATA_DF_PATH.isEmpty()) {
+                throw new RuntimeException("data.df.path not set in config.properties");
+            }
+            if (LOADED_ATTRIBUTES_PATH == null || LOADED_ATTRIBUTES_PATH.equals("path-not-set") || LOADED_ATTRIBUTES_PATH.isEmpty()) {
+                // This path is not directly used in Main's logic for now, but we load it for completeness
+                System.out.println("Warning: attributes.path is not set or default in config.properties. This may be an issue if needed later.");
+            }
+            if (LOADED_SENSITIVITY_RESULTS_PATH == null || LOADED_SENSITIVITY_RESULTS_PATH.equals("path-not-set") || LOADED_SENSITIVITY_RESULTS_PATH.isEmpty()) {
+                throw new RuntimeException("sensitivity.results.path not set in config.properties");
+            }
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            throw new RuntimeException("Failed to load config.properties", ex);
+        }
+    }
 
     public static void createTableFromSimpleDataFrame(Connection conn, SimpleDataFrame sdf, String tableName) throws SQLException {
         if (sdf == null || sdf.getColumnCount() == 0) {
@@ -88,22 +117,28 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("Starting Anonymization Process...");
-        if (args.length != 6) {
-    System.err.println("Usage: java com.example.anonymization.Main <data_df_path> <attributes_path> <sensitivity_results_path> <kyu_score_path> <column_id> <filter_value>");
+        if (args.length != 3) {
+    System.err.println("Usage: java com.example.anonymization.Main <kyu_score_path> <column_id> <filter_value>");
     return;
 }
 
-        String dataDfPath = args[0];
-        String attributesPath = args[1]; // Not used in current Main logic directly, but good to have
-        String sensitivityResultsPath = args[2];
-        String kyuScorePath = args[3];
-        String userIdColumn = args[4];
-        String userValue = args[5];
+        // Paths for data_df and sensitivity_results are now loaded from config.properties
+        // attributesPath is also loaded from config.properties (LOADED_ATTRIBUTES_PATH) but not directly used in this method's current logic.
+        String kyuScorePath = args[0];
+        String userIdColumn = args[1];
+        String userValue = args[2];
+
+        System.out.println("--- Path Configuration ---");
+        System.out.println("Data DF path (from config): " + LOADED_DATA_DF_PATH);
+        System.out.println("Attributes path (from config): " + LOADED_ATTRIBUTES_PATH);
+        System.out.println("Sensitivity Results path (from config): " + LOADED_SENSITIVITY_RESULTS_PATH);
+        System.out.println("KYU Score path (from runtime arg): " + kyuScorePath);
+        System.out.println("--- End Path Configuration ---");
 
         try {
-            SimpleDataFrame dataDf = DataLoader.loadDataDf(dataDfPath, ';');
-            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(sensitivityResultsPath, null);
-            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(kyuScorePath, null);
+            SimpleDataFrame dataDf = DataLoader.loadDataDf(LOADED_DATA_DF_PATH, ';');
+            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(LOADED_SENSITIVITY_RESULTS_PATH, null);
+            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(kyuScorePath, null); // kyu_score_path is a runtime argument
 
             System.out.println("Data initialized. dataDf rows: " + dataDf.getRowCount());
 

@@ -1,43 +1,70 @@
 # Data Processor Project
 
-This project provides tools for data anonymization and processing.
+This project provides tools for data anonymization and processing. It generates two primary executable JARs:
+- `data-processor-main.jar`: The main application which uses compile-time embedded paths for some data files and runtime arguments for others.
+- `data-processor-mock-runner.jar`: A test runner that takes all file paths as command-line arguments.
 
 ## Building and Running the Project
 
 ### Building the JARs
 
-To build the executable JAR files, navigate to the project's root directory (where the `pom.xml` is located) and run the following Maven command:
+To build the executable JAR files, navigate to the project's root directory (where `pom.xml` is located).
 
+The build process for `data-processor-main.jar` embeds paths for the main data CSV, attributes CSV, and sensitivity results Excel file directly into the JAR from Maven properties provided at build time. The KYU score Excel file path is provided at runtime for this JAR.
+
+Run the following Maven command, replacing placeholder paths with actual paths to your files:
 ```bash
-mvn clean package
+mvn clean package -Ddata.df.path=./path/to/your/Data_2019-20.csv \
+                  -Dattributes.path=./path/to/your/Attributes.csv \
+                  -Dsensitivity.results.path=./path/to/your/Sensitivity_Results.xlsx
 ```
-This command will compile the code, run tests, and package the application into two JAR files located in the `target/` directory:
-- `data-processor-main.jar`
-- `data-processor-mock-runner.jar`
+
+**Explanation of Build-Time Properties for `data-processor-main.jar`**:
+- `-Ddata.df.path`: Specifies the path to the main data CSV file (e.g., `Data_2019-20.csv`).
+- `-Dattributes.path`: Specifies the path to the attributes definition CSV file (e.g., `Attributes.csv`). (Note: This path is loaded but not actively used by the `Main` class's current direct logic, but is configured for potential future use).
+- `-Dsensitivity.results.path`: Specifies the path to the sensitivity results Excel file (e.g., `Sensitivity_Results.xlsx`).
+
+If these properties are not provided during the build, they will default to `"path-not-set"`, which will likely cause runtime errors when `data-processor-main.jar` is executed.
+
+This command will compile the code, run tests (if any), and package the application into two JAR files located in the `target/` directory:
+- `target/data-processor-main.jar` (with embedded paths for data, attributes, and sensitivity results)
+- `target/data-processor-mock-runner.jar`
 
 ### Running `data-processor-main.jar`
 
-This JAR is the main application for data processing and anonymization. It requires six command-line arguments: paths to the data CSV file, attributes CSV file, sensitivity results Excel file, KYU score Excel file, the column ID to query, and the filter value for that column.
+This JAR is the main application for data processing and anonymization.
+- Paths for the main data, attributes, and sensitivity results are embedded at build time.
+- It requires three command-line arguments at runtime: the path to the KYU score Excel file, the column ID to query, and the filter value for that column.
 
 **Usage:**
 ```bash
-java -jar target/data-processor-main.jar <data_df_path> <attributes_path> <sensitivity_results_path> <kyu_score_path> <column_id> <filter_value>
+java -jar target/data-processor-main.jar <kyu_score_path> <column_id> <filter_value>
 ```
+
+**Arguments:**
+- `<kyu_score_path>`: Path to the KYU score Excel file (e.g., `path/to/your/KYU_Score.xlsx`).
+- `<column_id>`: The ID/name of the column to be queried from the main data file.
+- `<filter_value>`: The value to filter by in the specified `<column_id>`. Also used to find the matching KYU score for the user.
 
 **Example:**
 ```bash
-java -jar target/data-processor-main.jar path/to/your/Data_2019-20.csv path/to/your/Attributes.csv path/to/your/Sensitivity_Results.xlsx path/to/your/KYU_Score.xlsx "2" "SomeValue"
+java -jar target/data-processor-main.jar path/to/your/KYU_Score.xlsx "2" "SomeValue"
 ```
-Ensure you replace the placeholder paths and values with the actual paths to your files and the desired query parameters.
+Ensure you replace the placeholder path and values with your actual KYU score file path and desired query parameters.
 
 ### Running `data-processor-mock-runner.jar`
 
-This JAR runs a predefined mock data test scenario using the provided data files. It requires three command-line arguments: paths to the data CSV file, sensitivity results Excel file, and KYU score Excel file.
+This JAR runs a predefined mock data test scenario using the provided data files. It requires all three primary data file paths as command-line arguments.
 
 **Usage:**
 ```bash
 java -jar target/data-processor-mock-runner.jar <data_df_path> <sensitivity_results_path> <kyu_score_path>
 ```
+
+**Arguments:**
+- `<data_df_path>`: Path to the main data CSV file.
+- `<sensitivity_results_path>`: Path to the sensitivity results Excel file.
+- `<kyu_score_path>`: Path to the KYU score Excel file.
 
 **Example:**
 ```bash
@@ -45,4 +72,24 @@ java -jar target/data-processor-mock-runner.jar path/to/your/Data_2019-20.csv pa
 ```
 Ensure you replace the placeholder paths with the actual paths to your files.
 
-**Note:** All file paths provided as command-line arguments must be valid paths to your CSV and Excel data files. The application reads these files to perform its operations.
+## Using as a Library / Dependency
+
+The `data-processor-main.jar`, once built with its embedded paths (by providing the `-D` properties during `mvn clean package`), can potentially be included as a dependency in other Maven projects if you need to call its functionalities programmatically.
+
+If the JAR is available locally, you might consider installing it to your local Maven repository (`mvn install`) or using a system-scoped dependency.
+
+**Example of System-Scoped Dependency (for local JAR):**
+```xml
+<dependency>
+    <groupId>com.example</groupId>
+    <artifactId>data-processor-main</artifactId> <!-- Note: artifactId might need adjustment if using classifiers -->
+    <version>1.0-SNAPSHOT</version> <!-- Or the version built -->
+    <scope>system</scope>
+    <systemPath>${project.basedir}/path/to/data-processor-main.jar</systemPath>
+</dependency>
+```
+**Note:** Using system scope has limitations and is generally not recommended for multi-module projects or wider distribution. Installing the JAR to a local or remote Maven repository is a more robust approach.
+
+When used as a library, you could invoke the `main` method of `com.example.anonymization.Main` class, providing the three runtime arguments programmatically. Alternatively, you might refactor the core logic into separate, more easily callable public methods if direct `main` invocation is not suitable.
+The embedded paths for data, attributes, and sensitivity results would be used as configured during its build. The KYU score path would still need to be provided if using the `main` method directly.
+```
