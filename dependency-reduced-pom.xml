@@ -59,9 +59,10 @@
     </plugins>
   </build>
   <properties>
-    <maven.compiler.target>17</maven.compiler.target>
     <sensitivity.results.path>path-not-set</sensitivity.results.path>
     <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <kyu.score.path>path-not-set</kyu.score.path>
     <attributes.path>path-not-set</attributes.path>
     <data.df.path>path-not-set</data.df.path>
   </properties>

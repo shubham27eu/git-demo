@@ -12,6 +12,7 @@ public class Main {
     private static final String LOADED_DATA_DF_PATH;
     private static final String LOADED_ATTRIBUTES_PATH;
     private static final String LOADED_SENSITIVITY_RESULTS_PATH;
+    private static final String LOADED_KYU_SCORE_PATH;
 
     static {
         Properties props = new Properties();
@@ -25,6 +26,7 @@ public class Main {
             LOADED_DATA_DF_PATH = props.getProperty("data.df.path");
             LOADED_ATTRIBUTES_PATH = props.getProperty("attributes.path");
             LOADED_SENSITIVITY_RESULTS_PATH = props.getProperty("sensitivity.results.path");
+            LOADED_KYU_SCORE_PATH = props.getProperty("kyu.score.path");
 
             if (LOADED_DATA_DF_PATH == null || LOADED_DATA_DF_PATH.equals("path-not-set") || LOADED_DATA_DF_PATH.isEmpty()) {
                 throw new RuntimeException("data.df.path not set in config.properties");
@@ -35,6 +37,9 @@ public class Main {
             }
             if (LOADED_SENSITIVITY_RESULTS_PATH == null || LOADED_SENSITIVITY_RESULTS_PATH.equals("path-not-set") || LOADED_SENSITIVITY_RESULTS_PATH.isEmpty()) {
                 throw new RuntimeException("sensitivity.results.path not set in config.properties");
+            }
+            if (LOADED_KYU_SCORE_PATH == null || LOADED_KYU_SCORE_PATH.equals("path-not-set") || LOADED_KYU_SCORE_PATH.isEmpty()) {
+                throw new RuntimeException("kyu.score.path not set in config.properties");
             }
 
         } catch (IOException ex) {
@@ -118,27 +123,28 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Starting Anonymization Process...");
         if (args.length != 3) {
-    System.err.println("Usage: java com.example.anonymization.Main <kyu_score_value> <column_id> <filter_value>"); // Updated usage message
+    System.err.println("Usage: java com.example.anonymization.Main <user_id> <column_id> <filter_value>");
     return;
 }
 
-        // Paths for data_df and sensitivity_results are now loaded from config.properties
-        // attributesPath is also loaded from config.properties (LOADED_ATTRIBUTES_PATH) but not directly used in this method's current logic.
-        String kyuScoreValue = args[0]; // Renamed from kyuScorePath, now holds the value e.g. "low"
-        String userIdColumn = args[1];
-        String userValue = args[2]; // This is the filter_value, also used previously for kyu score lookup if applicable
+        String userId = args[0];
+        String columnId = args[1];
+        String filterValue = args[2];
 
         System.out.println("--- Configuration ---");
         System.out.println("Data DF path (from config): " + LOADED_DATA_DF_PATH);
         System.out.println("Attributes path (from config): " + LOADED_ATTRIBUTES_PATH);
         System.out.println("Sensitivity Results path (from config): " + LOADED_SENSITIVITY_RESULTS_PATH);
-        System.out.println("KYU Score Value (from runtime arg): " + kyuScoreValue);
+        System.out.println("KYU Score Path (from config): " + LOADED_KYU_SCORE_PATH);
+        System.out.println("User ID (from runtime arg): " + userId);
+        System.out.println("Column ID (from runtime arg): " + columnId);
+        System.out.println("Filter Value (from runtime arg): " + filterValue);
         System.out.println("--- End Configuration ---");
 
         try {
             SimpleDataFrame dataDf = DataLoader.loadDataDf(LOADED_DATA_DF_PATH, ';');
             List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(LOADED_SENSITIVITY_RESULTS_PATH, null);
-            // List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(kyuScorePath, null); // Removed: KYU scores no longer loaded from file
+            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(LOADED_KYU_SCORE_PATH, null);
 
             System.out.println("Data initialized. dataDf rows: " + dataDf.getRowCount());
 
@@ -146,7 +152,7 @@ public class Main {
                 System.out.println("In-memory SQLite DB connected.");
                 createTableFromSimpleDataFrame(conn, dataDf, "data_df");
                 System.out.println("'data_df' table created and populated in SQLite.");
-                String query = String.format("SELECT * FROM data_df WHERE \"%s\" = '%s'", userIdColumn, userValue);
+                String query = String.format("SELECT * FROM data_df WHERE \"%s\" = '%s'", columnId, filterValue);
                 System.out.println("Executing query: " + query);
                 SimpleDataFrame resultSDF = executeSqlQueryToSimpleDataFrame(conn, query);
 
@@ -160,11 +166,12 @@ System.out.println("Query resultSDF rows: " + resultSDF.getRowCount());
                 String resultType = DataProcessor.determineQueryResultType(resultSDF);
                 System.out.println("Result Type ------ " + resultType);
 
-                // KYU score is now directly from command line argument
-                String kyuScoreString = kyuScoreValue.toLowerCase();
-                // Validate kyuScoreString if necessary (e.g., ensure it's "low", "medium", or "high")
-                // For now, we assume it's provided correctly.
-                System.out.println("KYU Score ------ " + kyuScoreString);
+                String kyuScoreString = kyuScoresList.stream()
+                        .filter(ks -> userId.equals(ks.getUserId()))
+                        .map(ks -> ks.getKyuScore().toLowerCase())
+                        .findFirst()
+                        .orElse("low"); // Default if user_id not found or KYU Score file doesn't contain the user
+                System.out.println("KYU Score for User ID '" + userId + "' ------ " + kyuScoreString);
 
                 String sensitivityLevelString;
                 if (resultSDF.getColumnCount() == 0) {
