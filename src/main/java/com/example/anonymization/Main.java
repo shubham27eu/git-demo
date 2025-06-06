@@ -1,11 +1,22 @@
 package com.example.anonymization;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.sql.*;
 import java.util.*;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.EnumSet;
+import java.util.Set;
+
 
 public class Main {
 
@@ -14,8 +25,8 @@ public class Main {
     // private static final String LOADED_SENSITIVITY_RESULTS_PATH; // Removed
     // private static final String LOADED_KYU_SCORE_PATH; // Removed
 
-    private static final String SENSITIVITY_RESULTS_FILE_PATH = "Sensitivity_Results.xlsx";
-    private static final String KYU_SCORE_FILE_PATH = "KYU Score.xlsx";
+    private static final String SENSITIVITY_RESULTS_FILE_PATH = "Sensitivity_Results.xlsx"; // Expected output from Python script
+    private static final String KYU_SCORE_FILE_PATH = "KYU Score.xlsx"; // Expected output from Python script
 
     static {
         Properties props = new Properties();
@@ -118,7 +129,83 @@ public class Main {
         System.out.println("--------------------");
     }
 
+    private static void executePythonScript(String scriptResourcePath) {
+        try {
+            Path tempScript = Files.createTempFile("anonymization_script_", ".py");
+            try (InputStream scriptStream = Main.class.getResourceAsStream(scriptResourcePath)) {
+                if (scriptStream == null) {
+                    throw new RuntimeException("Cannot find Python script in JAR: " + scriptResourcePath);
+                }
+                Files.copy(scriptStream, tempScript, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // Make executable (especially for Linux/macOS)
+            File scriptFile = tempScript.toFile();
+            boolean executableSet = false;
+            try {
+                // For POSIX compliant systems
+                Set<PosixFilePermission> perms = EnumSet.of(
+                        PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.OWNER_WRITE,
+                        PosixFilePermission.OWNER_EXECUTE,
+                        PosixFilePermission.GROUP_READ,
+                        PosixFilePermission.OTHERS_READ
+                );
+                Files.setPosixFilePermissions(tempScript, perms);
+                executableSet = true;
+            } catch (UnsupportedOperationException | IOException e) {
+                // This means system is likely not POSIX compliant (e.g. Windows)
+                // Fallback to Java's setExecutable, which might work or not depending on OS
+                executableSet = scriptFile.setExecutable(true);
+            }
+
+            if (!executableSet && !scriptFile.canExecute()) {
+                 System.out.println("Warning: Could not make Python script executable: " + scriptFile.getAbsolutePath() + ". Execution might fail if direct execution is required.");
+            }
+
+
+            System.out.println("Executing Python script: " + scriptFile.getAbsolutePath());
+            ProcessBuilder pb = new ProcessBuilder("python3", scriptFile.getAbsolutePath());
+            // User might need to change "python3" to "python" if that's their system default for Python 3
+            pb.inheritIO(); // Stream Python's stdout/stderr to Java's stdout/stderr
+
+            Process p = pb.start();
+            // Wait for a reasonable time, e.g., 1 minute per script
+            boolean finished = p.waitFor(60, TimeUnit.SECONDS);
+            if (!finished) {
+                p.destroyForcibly();
+                throw new RuntimeException("Python script execution timed out: " + scriptResourcePath);
+            }
+
+            int exitCode = p.exitValue();
+            if (exitCode != 0) {
+                throw new RuntimeException("Python script " + scriptResourcePath + " exited with error code: " + exitCode);
+            }
+            System.out.println("Python script " + scriptResourcePath + " executed successfully.");
+
+            // Schedule temp file for deletion on JVM exit
+            scriptFile.deleteOnExit();
+
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Error executing Python script " + scriptResourcePath, e);
+        }
+    }
+
     public static void main(String[] args) {
+        System.out.println("Attempting to execute Python scripts...");
+        try {
+            executePythonScript("/scripts/generate_sensitivity.py");
+            executePythonScript("/scripts/generate_kyu_scores.py");
+            System.out.println("Python scripts execution phase completed.");
+        } catch (RuntimeException e) {
+            System.err.println("Failed to execute Python scripts: " + e.getMessage());
+            e.printStackTrace();
+            // Decide if to exit or try to continue if files might exist from a previous run
+            System.err.println("Exiting due to Python script execution failure.");
+            return;
+        }
+        System.out.println("--------------------------------------------------");
+
         System.out.println("Starting Anonymization Process...");
         if (args.length != 2) { // Expect 2 arguments now
     System.err.println("Usage: java com.example.anonymization.Main <user_id> \"<sqlite_query>\"");
