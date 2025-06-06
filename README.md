@@ -1,8 +1,10 @@
 # Data Processor Project
 
 This project provides tools for data anonymization and processing. It generates two primary executable JARs:
-- `data-processor-main.jar`: The main application which uses compile-time embedded paths for data files (including KYU scores) and runtime arguments for query parameters.
-- `data-processor-mock-runner.jar`: A test runner that takes all file paths as command-line arguments.
+- `data-processor-main.jar`: The main application. It uses compile-time embedded paths for the primary data and attributes files. Paths for sensitivity results and KYU score files are hardcoded within the application (expecting them in the working directory or a predefined relative location). Runtime arguments are needed for the user ID (for KYU score lookup) and the specific SQL query to execute.
+- `data-processor-mock-runner.jar`: A test runner that takes all its required file paths as command-line arguments.
+
+The recommended way to run the full data processing pipeline (including Python-based ML model outputs) is via a wrapper shell script, as detailed below.
 
 ## Building and Running the Project
 
@@ -10,33 +12,30 @@ This project provides tools for data anonymization and processing. It generates 
 
 To build the executable JAR files, navigate to the project's root directory (where `pom.xml` is located).
 
-The build process for `data-processor-main.jar` embeds paths for the main data CSV, attributes CSV, sensitivity results Excel file, and the KYU score Excel file directly into the JAR from Maven properties provided at build time.
+The build process for `data-processor-main.jar` embeds paths for the main data CSV and attributes CSV file directly into the JAR from Maven properties provided at build time.
 
 Run the following Maven command, replacing placeholder paths with actual paths to your files:
 ```bash
 mvn clean package -Ddata.df.path=./path/to/your/Data_2019-20.csv \
-                  -Dattributes.path=./path/to/your/Attributes.csv \
-                  -Dsensitivity.results.path=./path/to/your/Sensitivity_Results.xlsx \
-                  -Dkyu.score.path=./path/to/your/KYU_Score.xlsx
+                  -Dattributes.path=./path/to/your/Attributes.csv
 ```
 
 **Explanation of Build-Time Properties for `data-processor-main.jar`**:
-- `-Ddata.df.path`: Specifies the path to the main data CSV file (e.g., `Data_2019-20.csv`).
-- `-Dattributes.path`: Specifies the path to the attributes definition CSV file (e.g., `Attributes.csv`). (Note: This path is loaded but not actively used by the `Main` class's current direct logic, but is configured for potential future use).
-- `-Dsensitivity.results.path`: Specifies the path to the sensitivity results Excel file (e.g., `Sensitivity_Results.xlsx`).
-- `-Dkyu.score.path`: Specifies the path to the KYU score Excel file (e.g., `KYU_Score.xlsx`).
+- `-Ddata.df.path`: Specifies the path to the main data CSV file (e.g., `Data_2019-20.csv`). This path is embedded in the JAR.
+- `-Dattributes.path`: Specifies the path to the attributes definition CSV file (e.g., `Attributes.csv`). This path is embedded in the JAR. (Note: This path is loaded but not actively used by the `Main` class's current direct logic, but is configured for potential future use).
 
-If these properties are not provided during the build, they will default to `"path-not-set"`, which will likely cause runtime errors when `data-processor-main.jar` is executed as the application will not find the necessary data files.
+If these properties are not provided during the build, they will default to `"path-not-set"`, which will likely cause runtime errors when `data-processor-main.jar` is executed.
 
-This command will compile the code, run tests (if any), and package the application into two JAR files located in the `target/` directory:
-- `target/data-processor-main.jar` (with all four data file paths embedded)
-- `target/data-processor-mock-runner.jar` (if its execution is enabled in `pom.xml`)
+This command will compile the code, run tests (if any), and package the application. The primary output for the main application will be `target/data-processor-main.jar`.
+The `data-processor-mock-runner.jar` might also be built if its execution is enabled in the `pom.xml`.
 
-### Running `data-processor-main.jar`
+### Running `data-processor-main.jar` (Standalone)
 
-This JAR is the main application for data processing and anonymization.
-- Paths for all necessary data files (main data, attributes, sensitivity results, and KYU scores) are embedded at build time.
-- It requires two command-line arguments at runtime: the user ID (for KYU score lookup) and the full SQLite query string to be executed against the loaded data.
+While direct execution is possible, it's recommended to use the shell script described in the next section for a complete workflow. If running standalone, ensure `Sensitivity_Results.xlsx` and `KYU Score.xlsx` are present in the working directory from which the JAR is launched (or the specific relative path hardcoded in `Main.java`). These files are expected to be generated by preceding Python scripts.
+
+- Paths for the main data CSV and attributes CSV are embedded at build time.
+- Paths for `Sensitivity_Results.xlsx` and `KYU Score.xlsx` are hardcoded in `Main.java` (currently expecting them in the JAR's working directory).
+- It requires two command-line arguments at runtime: the user ID (for KYU score lookup) and the full SQLite query string.
 
 **Usage:**
 ```bash
@@ -44,24 +43,23 @@ java -jar target/data-processor-main.jar <user_id> "<sqlite_query>"
 ```
 
 **Arguments:**
-- `<user_id>`: The ID of the user. This ID is used to look up their KYU score from the KYU score file (whose path was embedded at build time).
-- `<sqlite_query>`: The full SQLite query string to execute on the data loaded from the CSV file specified by `data.df.path` at build time. **Important**: Enclose the query in double quotes if it contains spaces or special shell characters. The table name within the query should typically be `data_df` (as created by the application).
+- `<user_id>`: The ID of the user. This ID is used to look up their KYU score from the `KYU Score.xlsx` file.
+- `<sqlite_query>`: The full SQLite query string to execute on the data loaded from the CSV file (specified by `data.df.path` at build time). **Important**: Enclose the query in double quotes if it contains spaces or special shell characters. The table name within the query should typically be `data_df`.
 
 **Example:**
 ```bash
 java -jar target/data-processor-main.jar "2" "SELECT * FROM data_df WHERE "2" = 'Gadag'"
 ```
-Ensure you replace `"2"` with your desired user ID. The example query selects all columns for the row where column named "2" has the value 'Gadag'. Adjust the query as needed for your specific data and table structure (the table created from the CSV is named `data_df`).
 
 ### Running `data-processor-mock-runner.jar`
 
-This JAR runs a predefined mock data test scenario using the provided data files. It requires all three primary data file paths as command-line arguments. (Note: The build configuration for this JAR might be commented out in the current `pom.xml` to focus on `data-processor-main.jar`. If needed, ensure its `<execution>` block in `maven-shade-plugin` or `maven-assembly-plugin` is active).
+This JAR runs a predefined mock data test scenario and requires all its necessary file paths as command-line arguments.
+(Note: The build configuration for this JAR might be commented out in the current `pom.xml`. If needed, ensure its execution block in the `maven-shade-plugin` is active and correctly configured, possibly with a classifier like `mock-runner` to produce a distinct JAR, e.g., `target/data-processor-mock-runner.jar`).
 
 **Usage:**
 ```bash
 java -jar target/data-processor-mock-runner.jar <data_df_path> <sensitivity_results_path> <kyu_score_path>
 ```
-
 **Arguments:**
 - `<data_df_path>`: Path to the main data CSV file.
 - `<sensitivity_results_path>`: Path to the sensitivity results Excel file.
@@ -69,13 +67,91 @@ java -jar target/data-processor-mock-runner.jar <data_df_path> <sensitivity_resu
 
 **Example:**
 ```bash
-java -jar target/data-processor-mock-runner.jar path/to/your/Data_2019-20.csv path/to/your/Sensitivity_Results.xlsx path/to/your/KYU_Score.xlsx
+java -jar target/data-processor-mock-runner.jar path/to/Data_2019-20.csv path/to/Sensitivity_Results.xlsx path/to/KYU_Score.xlsx
 ```
-Ensure you replace the placeholder paths with the actual paths to your files.
+
+## Recommended Execution via Shell Script
+
+The intended workflow involves running Python scripts to generate machine learning model outputs (`Sensitivity_Results.xlsx` and `KYU Score.xlsx`), followed by running the Java application (`data-processor-main.jar`) which consumes these files along with the primary dataset.
+
+Below is an example structure for a shell script to orchestrate this process:
+
+```bash
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+echo "Step 1: Running Python ML scripts..."
+# !!! IMPORTANT: Replace these with your actual Python script commands !!!
+# These scripts should generate/update Sensitivity_Results.xlsx and KYU Score.xlsx
+# in the same directory where data-processor-main.jar will be run (the current directory),
+# or ensure Main.java's hardcoded paths for these files match their output location.
+# Example:
+# python3 path/to/your/script_for_sensitivity.py
+# python3 path/to/your/script_for_kyu_scores.py
+echo "Placeholder for Python script execution. Please add your script commands."
+# Create dummy files for now if Python scripts are not ready, for testing the Java part:
+touch "Sensitivity_Results.xlsx"
+touch "KYU Score.xlsx"
+echo "Created dummy Sensitivity_Results.xlsx and KYU Score.xlsx for testing."
+
+
+# Check if Python scripts were successful (basic check for file existence)
+if [ ! -f "Sensitivity_Results.xlsx" ] || [ ! -f "KYU Score.xlsx" ]; then
+    echo "Error: Python scripts did not generate expected output files (Sensitivity_Results.xlsx, KYU Score.xlsx)."
+    exit 1
+fi
+
+echo "Python scripts complete (or dummy files created)."
+echo "--------------------------------------------------"
+echo "Step 2: Running Java data processing application..."
+
+# Check if user_id and sqlite_query are provided to the shell script
+if [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: $0 <user_id> \"<sqlite_query>\""
+  echo "Example: $0 \"1\" \"SELECT * FROM data_df WHERE \\\"2\\\" = 'Gadag'\"" # Note escaped quotes for example
+  exit 1
+fi
+
+USER_ID="$1"
+SQLITE_QUERY="$2"
+
+# Ensure paths for Data_2019-20.csv and Attributes.csv were set during JAR build
+# For example, the JAR should have been built with:
+# mvn clean package -Ddata.df.path=Data_2019-20.csv -Dattributes.path=Attributes.csv
+# (Adjust paths above if your source data files are located elsewhere relative to the project root)
+
+# Assuming the JAR is in target/ and data files are in the project root
+# Adjust paths as necessary if running the script from a different location
+JAVA_JAR_PATH="target/data-processor-main.jar"
+
+if [ ! -f "$JAVA_JAR_PATH" ]; then
+    echo "Error: $JAVA_JAR_PATH not found. Build the project first."
+    exit 1
+fi
+
+java -jar "$JAVA_JAR_PATH" "$USER_ID" "$SQLITE_QUERY"
+
+echo "Java application complete."
+```
+
+**To use this shell script:**
+1.  Save the content above into a file (e.g., `run_pipeline.sh`) in your project's root directory.
+2.  **Customize Python Script Commands**: Replace the placeholder Python script commands with your actual script execution lines.
+3.  **File Locations**:
+    *   Ensure your Python scripts output `Sensitivity_Results.xlsx` and `KYU Score.xlsx` into the same directory where you run `run_pipeline.sh` (which is assumed to be the project root). This is because `Main.java` currently hardcodes these filenames expecting them in the working directory.
+    *   Ensure the `Data_2019-20.csv` and `Attributes.csv` files are present at the paths you specify with `-D` flags during the `mvn clean package` build step (e.g., in the project root if you use `-Ddata.df.path=Data_2019-20.csv`).
+4.  **Make Executable**: `chmod +x run_pipeline.sh`
+5.  **Run**:
+    ```bash
+    ./run_pipeline.sh "1" "SELECT * FROM data_df WHERE \"2\" = 'Gadag'"
+    ```
+    (Note the escaped quotes in the example query if passing it directly on the command line to the script).
 
 ## Using as a Library / Dependency
 
-The `data-processor-main.jar`, once built with its embedded paths (by providing the `-D` properties during `mvn clean package`), can potentially be included as a dependency in other Maven projects if you need to call its functionalities programmatically.
+The `data-processor-main.jar`, once built with its embedded paths for `data.df.path` and `attributes.path`, can potentially be included as a dependency in other Maven projects if you need to call its functionalities programmatically.
 
 If the JAR is available locally, you might consider installing it to your local Maven repository (`mvn install`) or using a system-scoped dependency.
 
@@ -83,7 +159,7 @@ If the JAR is available locally, you might consider installing it to your local 
 ```xml
 <dependency>
     <groupId>com.example</groupId>
-    <artifactId>data-processor-main</artifactId> <!-- Note: artifactId might need adjustment if using classifiers -->
+    <artifactId>data-processor-main</artifactId> <!-- This is the finalName from shade plugin -->
     <version>1.0-SNAPSHOT</version> <!-- Or the version built -->
     <scope>system</scope>
     <systemPath>${project.basedir}/path/to/data-processor-main.jar</systemPath>
@@ -92,5 +168,5 @@ If the JAR is available locally, you might consider installing it to your local 
 **Note:** Using system scope has limitations and is generally not recommended for multi-module projects or wider distribution. Installing the JAR to a local or remote Maven repository is a more robust approach.
 
 When used as a library, you could invoke the `main` method of `com.example.anonymization.Main` class, providing the two runtime arguments (`user_id`, `sqlite_query`) programmatically. Alternatively, you might refactor the core logic into separate, more easily callable public methods if direct `main` invocation is not suitable.
-The paths for all data files (including KYU scores) would be used as configured during its build.
+The paths for `Data_2019-20.csv` and `Attributes.csv` would be used as configured during its build (embedded in `config.properties`). The application would expect `Sensitivity_Results.xlsx` and `KYU Score.xlsx` to be available in its working directory (or other fixed relative path as defined in `Main.java`).
 ```

@@ -11,8 +11,11 @@ public class Main {
 
     private static final String LOADED_DATA_DF_PATH;
     private static final String LOADED_ATTRIBUTES_PATH;
-    private static final String LOADED_SENSITIVITY_RESULTS_PATH;
-    private static final String LOADED_KYU_SCORE_PATH;
+    // private static final String LOADED_SENSITIVITY_RESULTS_PATH; // Removed
+    // private static final String LOADED_KYU_SCORE_PATH; // Removed
+
+    private static final String SENSITIVITY_RESULTS_FILE_PATH = "Sensitivity_Results.xlsx";
+    private static final String KYU_SCORE_FILE_PATH = "KYU Score.xlsx";
 
     static {
         Properties props = new Properties();
@@ -25,8 +28,8 @@ public class Main {
 
             LOADED_DATA_DF_PATH = props.getProperty("data.df.path");
             LOADED_ATTRIBUTES_PATH = props.getProperty("attributes.path");
-            LOADED_SENSITIVITY_RESULTS_PATH = props.getProperty("sensitivity.results.path");
-            LOADED_KYU_SCORE_PATH = props.getProperty("kyu.score.path");
+            // LOADED_SENSITIVITY_RESULTS_PATH = props.getProperty("sensitivity.results.path"); // Removed
+            // LOADED_KYU_SCORE_PATH = props.getProperty("kyu.score.path"); // Removed
 
             if (LOADED_DATA_DF_PATH == null || LOADED_DATA_DF_PATH.equals("path-not-set") || LOADED_DATA_DF_PATH.isEmpty()) {
                 throw new RuntimeException("data.df.path not set in config.properties");
@@ -35,12 +38,7 @@ public class Main {
                 // This path is not directly used in Main's logic for now, but we load it for completeness
                 System.out.println("Warning: attributes.path is not set or default in config.properties. This may be an issue if needed later.");
             }
-            if (LOADED_SENSITIVITY_RESULTS_PATH == null || LOADED_SENSITIVITY_RESULTS_PATH.equals("path-not-set") || LOADED_SENSITIVITY_RESULTS_PATH.isEmpty()) {
-                throw new RuntimeException("sensitivity.results.path not set in config.properties");
-            }
-            if (LOADED_KYU_SCORE_PATH == null || LOADED_KYU_SCORE_PATH.equals("path-not-set") || LOADED_KYU_SCORE_PATH.isEmpty()) {
-                throw new RuntimeException("kyu.score.path not set in config.properties");
-            }
+            // Removed error checks for LOADED_SENSITIVITY_RESULTS_PATH and LOADED_KYU_SCORE_PATH
 
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -133,16 +131,16 @@ public class Main {
         System.out.println("--- Configuration ---");
         System.out.println("Data DF path (from config): " + LOADED_DATA_DF_PATH);
         System.out.println("Attributes path (from config): " + LOADED_ATTRIBUTES_PATH);
-        System.out.println("Sensitivity Results path (from config): " + LOADED_SENSITIVITY_RESULTS_PATH);
-        System.out.println("KYU Score Path (from config): " + LOADED_KYU_SCORE_PATH);
+        System.out.println("Sensitivity Results path (fixed): " + SENSITIVITY_RESULTS_FILE_PATH);
+        System.out.println("KYU Score Path (fixed): " + KYU_SCORE_FILE_PATH);
         System.out.println("User ID (from runtime arg): " + userId);
         System.out.println("SQLite Query (from runtime arg): " + sqliteQuery);
         System.out.println("--- End Configuration ---");
 
         try {
             SimpleDataFrame dataDf = DataLoader.loadDataDf(LOADED_DATA_DF_PATH, ';');
-            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(LOADED_SENSITIVITY_RESULTS_PATH, null);
-            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(LOADED_KYU_SCORE_PATH, null);
+            List<SensitivityResult> sensitivityResultsList = DataLoader.loadSensitivityResults(SENSITIVITY_RESULTS_FILE_PATH, null);
+            List<KyuScore> kyuScoresList = DataLoader.loadKyuScores(KYU_SCORE_FILE_PATH, null);
 
             System.out.println("Data initialized. dataDf rows: " + dataDf.getRowCount());
 

@@ -66,8 +66,6 @@
     </plugins>
   </build>
   <properties>
-    <sensitivity.results.path>path-not-set</sensitivity.results.path>
-    <kyu.score.path>path-not-set</kyu.score.path>
     <attributes.path>path-not-set</attributes.path>
     <data.df.path>path-not-set</data.df.path>
   </properties>
