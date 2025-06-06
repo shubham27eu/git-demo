@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+        </Root>
+        <!-- Optional: Set specific log levels for noisy libraries if needed -->
+        <!-- You can uncomment and adjust these later if some libraries are too verbose -->
+        <!--
+        <Logger name="org.apache.poi" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="org.apache.commons.csv" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        -->
+    </Loggers>
+</Configuration>
