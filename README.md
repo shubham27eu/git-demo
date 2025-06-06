@@ -8,11 +8,48 @@ This project provides tools for data anonymization and processing. It generates 
 
 - **Java Development Kit (JDK)**: Version 17 or higher.
 - **Maven**: For building the project (version 3.x).
-- **Python 3**: Must be installed and accessible via the `python3` command (or `python` if `Main.java` is adjusted). This is a runtime dependency for `data-processor-main.jar`.
-- **Python Packages**: The Python environment must have the following packages installed (used by the bundled scripts):
-    - `pandas`
-    - `openpyxl`
-  You can typically install these using pip: `pip install pandas openpyxl`.
+- **Python 3**: Must be installed and accessible. The Java application will attempt to run Python scripts using `python3` (by default) or a Python interpreter found in a local `.venv` virtual environment.
+
+### Python Environment Setup (Recommended)
+
+It is **strongly recommended** to use a Python virtual environment to manage dependencies for this project and avoid conflicts with system-wide packages.
+
+1.  **Create a virtual environment**:
+    Navigate to your project's root directory (where you will run the Java JAR from) and run:
+    ```bash
+    python3 -m venv .venv
+    ```
+
+2.  **Activate the virtual environment**:
+    -   On macOS and Linux:
+        ```bash
+        source .venv/bin/activate
+        ```
+    -   On Windows (Git Bash or similar):
+        ```bash
+        source .venv/Scripts/activate
+        ```
+    -   On Windows (Command Prompt):
+        ```bash
+        .venv\Scripts\activate.bat
+        ```
+    -   On Windows (PowerShell):
+        ```bash
+        .venv\Scripts\Activate.ps1
+        ```
+    You should see the name of the virtual environment (e.g., `(.venv)`) in your shell prompt after activation.
+
+3.  **Install required Python packages**:
+    Once the virtual environment is activated, install the necessary libraries:
+    ```bash
+    pip install pandas openpyxl
+    ```
+    (These are for the dummy scripts provided. Your actual Python ML scripts might have other dependencies.)
+
+4.  **Running the Java Application with Virtual Environment**:
+    - If a virtual environment named `.venv` is present in the directory where `data-processor-main.jar` is run, and it contains a Python interpreter at `.venv/bin/python3` (for Linux/macOS) or `.venv/Scripts/python.exe` (for Windows), the Java application will automatically attempt to use that interpreter to run the bundled Python scripts.
+    - Otherwise, it will fall back to using the system-wide `python3` command (or `python` if `Main.java`'s `ProcessBuilder` configuration is changed).
+    - **Important**: Ensure you run the `java -jar ...` command from the same directory where the `.venv` folder is located (typically your project root).
 
 ## Building and Running the Project
 
@@ -42,14 +79,13 @@ The `data-processor-mock-runner.jar` might also be built if its execution is ena
 ### Running `data-processor-main.jar`
 
 This JAR orchestrates the data processing:
-1.  At runtime, it first extracts and executes the bundled Python scripts (`generate_sensitivity.py` and `generate_kyu_scores.py`).
+1.  At runtime, it first extracts and executes the bundled Python scripts (`generate_sensitivity.py` and `generate_kyu_scores.py`). It will attempt to use Python from a local `.venv` directory if detected (see "Python Environment Setup" above), otherwise falling back to the system `python3`.
 2.  These Python scripts are responsible for generating `Sensitivity_Results.xlsx` and `KYU Score.xlsx` in the current working directory (where the JAR is launched).
 3.  The Java application then loads these generated Excel files, along with the main data CSV and attributes CSV (paths for these two were embedded at build time).
 4.  Finally, it performs the anonymization based on the provided runtime arguments and loaded data.
 
 **Prerequisites for Running**:
-- Python 3 must be installed and executable as `python3` (or as configured in `Main.java`).
-- Required Python libraries (`pandas`, `openpyxl`) must be available in the Python environment.
+- Review the main "Prerequisites" section, especially the Python environment setup.
 
 **Usage:**
 ```bash
@@ -65,6 +101,13 @@ java -jar target/data-processor-main.jar <user_id> "<sqlite_query>"
 java -jar target/data-processor-main.jar "2" "SELECT * FROM data_df WHERE "2" = 'Gadag'"
 ```
 Ensure you replace `"2"` with your desired user ID. The example query selects all columns for the row where column named "2" has the value 'Gadag'.
+
+For more complex queries, especially those involving SQL `IN` clauses or other special characters, you might need more careful shell quoting. Here's an example demonstrating how to pass a query with an `IN` clause and quoted string literals, ensuring the column names (like `"2"`) are also correctly quoted for SQL if they are numeric or contain special characters:
+
+```bash
+java -jar target/data-processor-main.jar "2" 'SELECT "2", "18", "198" FROM data_df WHERE "2" IN ('"'"'Ramanagara'"'"', '"'"'Kolara'"'"')'
+```
+This example uses outer single quotes for the shell to treat the entire SQL query as one argument, and a common technique `'"'"'` to embed single quotes within the single-quoted string for the SQL string literals 'Ramanagara' and 'Kolara'. Alternatively, you can use outer double quotes and escape all inner double quotes and special characters as needed by your shell.
 
 ### Running `data-processor-mock-runner.jar`
 
@@ -105,6 +148,6 @@ If the JAR is available locally, you might consider installing it to your local 
 
 When used as a library:
 - The paths for `Data_2019-20.csv` and `Attributes.csv` would be used as configured during its build (embedded in `config.properties`).
-- If you call `com.example.anonymization.Main.main()`, it will attempt to execute the bundled Python scripts. This means the consuming application's environment must also meet the Python 3 and library prerequisites, and the Python scripts must be able to write to the current working directory.
+- If you call `com.example.anonymization.Main.main()`, it will attempt to execute the bundled Python scripts. This means the consuming application's environment must also meet the Python 3 and library prerequisites (including having a `.venv` or system `python3` available, and necessary packages like `pandas` and `openpyxl` installed for that Python interpreter). The Python scripts must be able to write to the current working directory.
 - Alternatively, you might refactor the core Java anonymization logic into separate, more easily callable public methods that do not directly invoke Python scripts, if you intend to manage the generation of `Sensitivity_Results.xlsx` and `KYU Score.xlsx` externally.
 ```

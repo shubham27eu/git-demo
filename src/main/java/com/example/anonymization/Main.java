@@ -163,9 +163,33 @@ public class Main {
                  System.out.println("Warning: Could not make Python script executable: " + scriptFile.getAbsolutePath() + ". Execution might fail if direct execution is required.");
             }
 
+            String pythonExecutableName = "python3"; // Default
+            // Potentially make "python3" a constant or configurable if it differs from "python" often for users.
 
-            System.out.println("Executing Python script: " + scriptFile.getAbsolutePath());
-            ProcessBuilder pb = new ProcessBuilder("python3", scriptFile.getAbsolutePath());
+            String venvPythonPath;
+            String osName = System.getProperty("os.name").toLowerCase();
+            if (osName.contains("win")) {
+                venvPythonPath = ".venv" + File.separator + "Scripts" + File.separator + "python.exe";
+                // On Windows, often just "python" is used for venv, and "python3" might not exist
+                // Also, the system python might just be "python". This logic might need refinement
+                // based on common Windows Python setups if "python3" fails.
+            } else { // macOS, Linux, other POSIX-like
+                venvPythonPath = ".venv" + File.separator + "bin" + File.separator + "python3";
+            }
+
+            File venvPythonFile = new File(venvPythonPath);
+            String effectivePythonCommand;
+
+            if (venvPythonFile.exists() && venvPythonFile.canExecute()) {
+                effectivePythonCommand = venvPythonFile.getAbsolutePath();
+                System.out.println("Using Python from virtual environment: " + effectivePythonCommand);
+            } else {
+                effectivePythonCommand = pythonExecutableName; // Fallback to system python3 (or python)
+                System.out.println("Virtual environment Python not found at '" + venvPythonPath + "'. Falling back to system Python: " + effectivePythonCommand);
+            }
+
+            System.out.println("Executing Python script: " + scriptFile.getAbsolutePath() + " using " + effectivePythonCommand);
+            ProcessBuilder pb = new ProcessBuilder(effectivePythonCommand, scriptFile.getAbsolutePath());
             // User might need to change "python3" to "python" if that's their system default for Python 3
             pb.inheritIO(); // Stream Python's stdout/stderr to Java's stdout/stderr
 
